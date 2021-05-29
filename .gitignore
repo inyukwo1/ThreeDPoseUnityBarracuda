@@ -65,3 +65,8 @@ ProjectSettings/
 Packages/
 *.json
 ProjectVersion.txt
+
+Assembly-CSharp-Editor.csproj
+Assembly-CSharp.csproj
+Assets/VSCode/Plugins.meta
+ThreeDPoseUnityBarracuda.sln
