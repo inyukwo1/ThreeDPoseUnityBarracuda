@@ -13,6 +13,8 @@ public class VideoCapture : MonoBehaviour
     public int WebCamIndex = 0;
     public VideoPlayer VideoPlayer;
 
+    private float startTime;
+
     private WebCamTexture webCamTexture;
     private RenderTexture videoTexture;
 
@@ -32,6 +34,16 @@ public class VideoCapture : MonoBehaviour
         this.bgHeight = bgHeight;
         if (UseWebCam) CameraPlayStart();
         else VideoPlayStart();
+    }
+    
+    public string videoClipName()
+    {
+        return VideoPlayer.clip.name;
+    }
+
+    public float getTimeElapsed()
+    {
+        return (Time.realtimeSinceStartup - startTime) * VideoPlayer.playbackSpeed;
     }
 
     /// <summary>
@@ -75,6 +87,7 @@ public class VideoCapture : MonoBehaviour
         VideoScreen.texture = videoTexture;
 
         VideoPlayer.Play();
+        startTime = Time.realtimeSinceStartup;
 
         var aspect = (float)videoTexture.width / videoTexture.height;
 

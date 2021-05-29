@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Barracuda;
@@ -28,7 +29,10 @@ public class VNectBarracudaRunner : MonoBehaviour
     /// Coordinates of joint points
     /// </summary>
     private VNectModel.JointPoint[] jointPoints;
-    
+
+    private List<VNectModel.JointPointCache[]> cachedJointPoints = new List<VNectModel.JointPointCache[]>();
+    private bool useCache;
+    private int cacheCursor = 0;
     /// <summary>
     /// Number of joint points
     /// </summary>
@@ -158,53 +162,120 @@ public class VNectBarracudaRunner : MonoBehaviour
         // Disabel sleep
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
 
-        // Init model
+        useCache = File.Exists(modelCacheFile());
+        if (useCache)
+        {
+            Debug.Log("Using cache");
+        }
+        //else
+        //{
+        //    // Init model
+        //}
         _model = ModelLoader.Load(NNModel, Verbose);
         _worker = WorkerFactory.CreateWorker(WorkerType, _model, Verbose);
-
         StartCoroutine("WaitLoad");
 
     }
 
+    private void OnApplicationQuit()
+    {
+        if (!useCache)
+        {
+            using (StreamWriter outputFile = new StreamWriter(modelCacheFile()))
+            {
+                foreach (var jointPointCacheArr in cachedJointPoints)
+                {
+                    string[] csvLines = new string[jointPointCacheArr.Length];
+
+                    for (var i = 0; i < jointPointCacheArr.Length; i++)
+                    {
+                        csvLines[i] = jointPointCacheArr[i].toCsvLine();
+                    }
+                    var line = string.Join("\t", csvLines);
+
+                    outputFile.WriteLine(line);
+                }
+            }
+            Debug.Log("Cache written to " + Directory.GetCurrentDirectory() + "//" + modelCacheFile());
+        }
+    }
+
+    private void readFromCache()
+    {
+        string[] lines = File.ReadAllLines(modelCacheFile());
+       
+        foreach (string line in lines)
+        {
+            string[] csvLines = line.Split('\t');
+            var jointPointCacheArr = new VNectModel.JointPointCache[csvLines.Length];
+            for (var i = 0; i < csvLines.Length; i++)
+            {
+                jointPointCacheArr[i] = new VNectModel.JointPointCache(csvLines[i]);
+            }
+            cachedJointPoints.Add(jointPointCacheArr);
+        }
+        Debug.Log("Cache loaded: " + cachedJointPoints.Count);
+    }
+
+    private string modelCacheFile()
+    {
+        return videoCapture.videoClipName() + ".cache";
+    }
+
     private void Update()
     {
+        //Debug.Log(Time.realtimeSinceStartup);
         if (!Lock)
         {
-            UpdateVNectModel();
+            if (useCache)
+            {
+                PredictPoseFromCache();
+            } else
+            {
+                UpdateVNectModel();
+            }
         }
     }
 
     private IEnumerator WaitLoad()
     {
-        inputs[inputName_1] = new Tensor(InitImg);
-        inputs[inputName_2] = new Tensor(InitImg);
-        inputs[inputName_3] = new Tensor(InitImg);
-
-        // Create input and Execute model
-        yield return _worker.StartManualSchedule(inputs);
-
-        // Get outputs
-        for (var i = 2; i < _model.outputs.Count; i++)
+        if (useCache)
         {
-            b_outputs[i] = _worker.PeekOutput(_model.outputs[i]);
+            jointPoints = VNectModel.Init();
+            readFromCache();
+            PredictPoseFromCache();
         }
-
-        // Get data from outputs
-        offset3D = b_outputs[2].data.Download(b_outputs[2].shape);
-        heatMap3D = b_outputs[3].data.Download(b_outputs[3].shape);
-
-        // Release outputs
-        for (var i = 2; i < b_outputs.Length; i++)
+        else
         {
-            b_outputs[i].Dispose();
+            inputs[inputName_1] = new Tensor(InitImg);
+            inputs[inputName_2] = new Tensor(InitImg);
+            inputs[inputName_3] = new Tensor(InitImg);
+
+            // Create input and Execute model
+            yield return _worker.StartManualSchedule(inputs);
+
+            // Get outputs
+            for (var i = 2; i < _model.outputs.Count; i++)
+            {
+                b_outputs[i] = _worker.PeekOutput(_model.outputs[i]);
+            }
+
+            // Get data from outputs
+            offset3D = b_outputs[2].data.Download(b_outputs[2].shape);
+            heatMap3D = b_outputs[3].data.Download(b_outputs[3].shape);
+
+            // Release outputs
+            for (var i = 2; i < b_outputs.Length; i++)
+            {
+                b_outputs[i].Dispose();
+            }
+
+            // Init VNect model
+            jointPoints = VNectModel.Init();
+
+            PredictPose();
+            yield return new WaitForSeconds(WaitTimeModelLoad);
         }
-
-        // Init VNect model
-        jointPoints = VNectModel.Init();
-
-        PredictPose();
-
-        yield return new WaitForSeconds(WaitTimeModelLoad);
 
         // Init VideoCapture
         videoCapture.Init(InputImageSize, InputImageSize);
@@ -272,6 +343,22 @@ public class VNectBarracudaRunner : MonoBehaviour
         }
 
         PredictPose();
+    }
+
+    private void PredictPoseFromCache()
+    {
+        while (cacheCursor < cachedJointPoints.Count &&
+            cachedJointPoints[cacheCursor][0].timeFrame < videoCapture.getTimeElapsed())
+        {
+            cacheCursor++;
+            Debug.Log(cacheCursor);
+            Debug.Log(cachedJointPoints[cacheCursor][0].timeFrame);
+            Debug.Log(videoCapture.getTimeElapsed());
+        }
+        for (var i = 0; i < jointPoints.Length; i++)
+        {
+            cachedJointPoints[cacheCursor][i].updateJointPoint(jointPoints[i]);
+        }
     }
 
     /// <summary>
@@ -347,6 +434,13 @@ public class VNectBarracudaRunner : MonoBehaviour
                 jp.Pos3D = jp.PrevPos3D[jp.PrevPos3D.Length - 1];
             }
         }
+
+        var jointPointsCache = new VNectModel.JointPointCache[jointPoints.Length];
+        for (var i = 0; i < jointPoints.Length; i++)
+        {
+            jointPointsCache[i] = new VNectModel.JointPointCache(jointPoints[i], videoCapture.getTimeElapsed());
+        }
+        cachedJointPoints.Add(jointPointsCache);
     }
 
     /// <summary>

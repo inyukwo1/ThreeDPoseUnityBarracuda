@@ -83,6 +83,90 @@ public class VNectModel : MonoBehaviour
         public Vector3 K = new Vector3();
     }
 
+    public class JointPointCache
+    {
+        float score3D;
+        float now3Dx, now3Dy, now3Dz;
+        float pos3Dx, pos3Dy, pos3Dz;
+        float kx, ky, kz;
+        float px, py, pz;
+        public float timeFrame;
+
+
+        public JointPointCache(JointPoint jointPoint, float time)
+        {
+            score3D = jointPoint.score3D;
+            now3Dx = jointPoint.Now3D.x;
+            now3Dy = jointPoint.Now3D.y;
+            now3Dz = jointPoint.Now3D.z;
+
+            pos3Dx = jointPoint.Pos3D.x;
+            pos3Dy = jointPoint.Pos3D.y;
+            pos3Dz = jointPoint.Pos3D.z;
+
+            kx = jointPoint.K.x;
+            ky = jointPoint.K.y;
+            kz = jointPoint.K.z;
+
+            px = jointPoint.P.x;
+            py = jointPoint.P.y;
+            pz = jointPoint.P.z;
+
+            timeFrame = time;
+        }
+
+        public JointPointCache(string csvLine)
+        {
+            var csvArr = csvLine.Split(',');
+            score3D = float.Parse(csvArr[0]);
+            now3Dx = float.Parse(csvArr[1]);
+            now3Dy = float.Parse(csvArr[2]);
+            now3Dz = float.Parse(csvArr[3]);
+
+            pos3Dx = float.Parse(csvArr[4]);
+            pos3Dy = float.Parse(csvArr[5]);
+            pos3Dz = float.Parse(csvArr[6]);
+
+            kx = float.Parse(csvArr[7]);
+            ky = float.Parse(csvArr[8]);
+            kz = float.Parse(csvArr[9]);
+
+            px = float.Parse(csvArr[10]);
+            py = float.Parse(csvArr[11]);
+            pz = float.Parse(csvArr[12]);
+
+            timeFrame = float.Parse(csvArr[13]);
+        }
+
+        public string toCsvLine()
+        {
+            return string.Join(",", new object[] { score3D, now3Dx, now3Dy, now3Dz, pos3Dx, pos3Dy, pos3Dz, kx, ky, kz, px, py, pz, timeFrame });
+        }
+
+        public void updateJointPoint(JointPoint jointPoint)
+        {
+            jointPoint.score3D = score3D;
+            jointPoint.Now3D.x = now3Dx;
+            jointPoint.Now3D.y = now3Dy;
+            jointPoint.Now3D.z = now3Dz;
+
+            jointPoint.Pos3D.x = pos3Dx;
+            jointPoint.Pos3D.y = pos3Dy;
+            jointPoint.Pos3D.z = pos3Dz;
+
+            jointPoint.X = jointPoint.Pos3D;
+
+            jointPoint.K.x = kx;
+            jointPoint.K.y = ky;
+            jointPoint.K.z = kz;
+
+            jointPoint.P.x = px;
+            jointPoint.P.y = py;
+            jointPoint.P.z = pz;
+        }
+
+    }
+
     public class Skeleton
     {
         public GameObject LineObject;
