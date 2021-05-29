@@ -33,7 +33,7 @@ public enum PositionIndex : int
     lThighBend,
     lShin,
     lFoot,
-    lToe,
+    lToe,d
 
     abdomenUpper,
 
@@ -300,8 +300,107 @@ public class VNectModel : MonoBehaviour
         jointPoints[PositionIndex.head.Int()].score3D = 1f;
         jointPoints[PositionIndex.spine.Int()].score3D = 1f;
 
+        printSize();
+        // default sizes: adjustSize(0.0782791f, 0.2430313f, 0.1149493f, 0.09470601f, 0.3519265f, 0.3787041f, 0.1038499f, 0.2337774f, 0.164821f);
+        adjustSize(0.0782791f, 0.2430313f, 0.1149493f, 0.09470601f, 0.3519265f, 0.3787041f, 0.1038499f, 0.4637774f, 0.324821f);
 
         return JointPoints;
+    }
+
+    public void printSize()
+    {
+
+        Vector3[,] vecArray = new Vector3[PositionIndex.Count.Int(), PositionIndex.Count.Int()];
+        float[,] disArray = new float[PositionIndex.Count.Int(), PositionIndex.Count.Int()];
+
+        for (var i = 0; i < PositionIndex.Count.Int(); i++)
+        {
+            for (var j = 0; j < PositionIndex.Count.Int(); j++)
+            {
+                if (jointPoints[i].Transform == null) continue;
+                if (jointPoints[j].Transform == null) continue;
+                vecArray[i, j] = jointPoints[i].Transform.position - jointPoints[j].Transform.position;
+                disArray[i, j] = Vector3.Distance(jointPoints[i].Transform.position, jointPoints[j].Transform.position);
+            }
+        }
+
+        Debug.Log("headNeck: " + disArray[PositionIndex.neck.Int(), PositionIndex.head.Int()]);
+        Debug.Log("neckSpine: " + disArray[PositionIndex.neck.Int(), PositionIndex.spine.Int()]);
+        Debug.Log("spineHip: " + disArray[PositionIndex.spine.Int(), PositionIndex.hip.Int()]);
+        Debug.Log("hipTightBand: " + disArray[PositionIndex.hip.Int(), PositionIndex.lThighBend.Int()]);
+        Debug.Log("tightBandShin: " + disArray[PositionIndex.lThighBend.Int(), PositionIndex.lShin.Int()]);
+        Debug.Log("shinFoot: " + disArray[PositionIndex.lShin.Int(), PositionIndex.lFoot.Int()]);
+        Debug.Log("neckShldr: " + disArray[PositionIndex.neck.Int(), PositionIndex.lShldrBend.Int()]);
+        Debug.Log("shldrForeArm: " + disArray[PositionIndex.lShldrBend.Int(), PositionIndex.lForearmBend.Int()]);
+        Debug.Log("foreArmHand: " + disArray[PositionIndex.lForearmBend.Int(), PositionIndex.lHand.Int()]);
+    }
+
+    public void adjustSize(float headNeck, float neckSpine, float spineHip, float hipTightBand, float tightBandShin,
+    float shinFoot, float neckShldr, float shldrForeArm, float foreArmHand)
+    {
+        // pivot is hip
+        // var 
+        Vector3[,] vecArray = new Vector3[PositionIndex.Count.Int(), PositionIndex.Count.Int()];
+        float[,] disArray = new float[PositionIndex.Count.Int(), PositionIndex.Count.Int()];
+
+        for (var i = 0; i < PositionIndex.Count.Int(); i++)
+        {
+            for (var j = 0; j < PositionIndex.Count.Int(); j++)
+            {
+                if (jointPoints[i].Transform == null) continue;
+                if (jointPoints[j].Transform == null) continue;
+                vecArray[i, j] = jointPoints[i].Transform.position - jointPoints[j].Transform.position;
+                disArray[i, j] = Vector3.Distance(jointPoints[i].Transform.position, jointPoints[j].Transform.position);
+            }
+        }
+
+        adjustPosOfJoint(PositionIndex.hip.Int(), PositionIndex.spine.Int(), spineHip, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.spine.Int(), PositionIndex.neck.Int(), neckSpine, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.neck.Int(), PositionIndex.head.Int(), headNeck, vecArray, disArray);
+
+        adjustPosOfJoint(PositionIndex.hip.Int(), PositionIndex.abdomenUpper.Int(), vecArray);
+
+        adjustPosOfJoint(PositionIndex.hip.Int(), PositionIndex.lThighBend.Int(), hipTightBand, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.lThighBend.Int(), PositionIndex.lShin.Int(), tightBandShin, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.lShin.Int(), PositionIndex.lFoot.Int(), shinFoot, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.lFoot.Int(), PositionIndex.lToe.Int(), vecArray);
+
+        adjustPosOfJoint(PositionIndex.hip.Int(), PositionIndex.rThighBend.Int(), hipTightBand, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.rThighBend.Int(), PositionIndex.rShin.Int(), tightBandShin, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.rShin.Int(), PositionIndex.rFoot.Int(), shinFoot, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.rFoot.Int(), PositionIndex.rToe.Int(), vecArray);
+
+        adjustPosOfJoint(PositionIndex.neck.Int(), PositionIndex.lShldrBend.Int(), neckShldr, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.lShldrBend.Int(), PositionIndex.lForearmBend.Int(), shldrForeArm, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.lForearmBend.Int(), PositionIndex.lHand.Int(), foreArmHand, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.lHand.Int(), PositionIndex.lThumb2.Int(), vecArray);
+        adjustPosOfJoint(PositionIndex.lHand.Int(), PositionIndex.lMid1.Int(), vecArray);
+        adjustPosOfJoint(PositionIndex.neck.Int(), PositionIndex.rShldrBend.Int(), neckShldr, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.rShldrBend.Int(), PositionIndex.rForearmBend.Int(), shldrForeArm, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.rForearmBend.Int(), PositionIndex.rHand.Int(), foreArmHand, vecArray, disArray);
+        adjustPosOfJoint(PositionIndex.rHand.Int(), PositionIndex.rThumb2.Int(), vecArray);
+        adjustPosOfJoint(PositionIndex.rHand.Int(), PositionIndex.rMid1.Int(), vecArray);
+
+        adjustPosOfJoint(PositionIndex.head.Int(), PositionIndex.lEar.Int(), vecArray);
+        //adjustPosOfJoint(PositionIndex.head.Int(), PositionIndex.lEye.Int(), vecArray);
+        adjustPosOfJoint(PositionIndex.head.Int(), PositionIndex.rEar.Int(), vecArray);
+        //adjustPosOfJoint(PositionIndex.head.Int(), PositionIndex.rEye.Int(), vecArray);
+        adjustPosOfJoint(PositionIndex.head.Int(), PositionIndex.Nose.Int(), vecArray);
+    }
+
+    private void adjustPosOfJoint(int fromIdx, int toIdx, float realSize, Vector3[,] vecArray, float[,] disArray)
+    {
+        jointPoints[toIdx].Transform.position =
+        jointPoints[fromIdx].Transform.position +
+        vecArray[toIdx, fromIdx] * realSize /
+        disArray[toIdx, fromIdx];
+    }
+
+    private void adjustPosOfJoint(int fromIdx, int toIdx, Vector3[,] vecArray)
+    {
+        jointPoints[toIdx].Transform.position =
+        jointPoints[fromIdx].Transform.position +
+        vecArray[toIdx, fromIdx];
     }
 
     public void PoseUpdate()
