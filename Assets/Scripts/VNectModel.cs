@@ -87,7 +87,7 @@ public class VNectModel : MonoBehaviour
     {
         float score3D;
         float now3Dx, now3Dy, now3Dz;
-        float pos3Dx, pos3Dy, pos3Dz;
+        public float pos3Dx, pos3Dy, pos3Dz;
         float kx, ky, kz;
         float px, py, pz;
         public float timeFrame;

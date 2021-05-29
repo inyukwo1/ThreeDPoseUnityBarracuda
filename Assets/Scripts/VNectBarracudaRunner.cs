@@ -53,6 +53,7 @@ public class VNectBarracudaRunner : MonoBehaviour
     /// </summary>
     public int HeatMapCol;
     private float InputImageSizeF;
+    private float lastCapturedTime;
 
     /// <summary>
     /// Column number of heatmap in 2D image
@@ -214,6 +215,32 @@ public class VNectBarracudaRunner : MonoBehaviour
             }
             cachedJointPoints.Add(jointPointCacheArr);
         }
+        // moving average
+        for (var i = 0; i < cachedJointPoints.Count; i++)
+        {
+            var cnt = 0f;
+            var avgpos3D = new float[cachedJointPoints[0].Length, 3];
+            for (var j = 0; j < cachedJointPoints.Count; j++)
+            {
+                if (cachedJointPoints[j][0].timeFrame - cachedJointPoints[i][0].timeFrame < 0.1 &&
+                   cachedJointPoints[j][0].timeFrame - cachedJointPoints[i][0].timeFrame > -0.1)
+                {
+                    cnt+= 1;
+                    for (var k = 0; k < cachedJointPoints[0].Length; k++)
+                    {
+                        avgpos3D[k, 0] += cachedJointPoints[j][k].pos3Dx;
+                        avgpos3D[k, 1] += cachedJointPoints[j][k].pos3Dy;
+                        avgpos3D[k, 2] += cachedJointPoints[j][k].pos3Dz;
+                    }
+                }
+            }
+            for (var k = 0; k < cachedJointPoints[0].Length; k++)
+            {
+                cachedJointPoints[i][k].pos3Dx = avgpos3D[k, 0] / cnt;
+                cachedJointPoints[i][k].pos3Dy = avgpos3D[k, 1] / cnt;
+                cachedJointPoints[i][k].pos3Dz = avgpos3D[k, 2] / cnt;
+            }
+        }
         Debug.Log("Cache loaded: " + cachedJointPoints.Count);
     }
 
@@ -300,13 +327,18 @@ public class VNectBarracudaRunner : MonoBehaviour
             inputs[inputName_1] = input;
             inputs[inputName_2] = new Tensor(videoCapture.MainTexture);
             inputs[inputName_3] = new Tensor(videoCapture.MainTexture);
+            lastCapturedTime = videoCapture.getTimeElapsed();
         }
-        else
+        else if (videoCapture.getTimeElapsed() - lastCapturedTime > 0.05)
         {
             inputs[inputName_3].Dispose();
 
             inputs[inputName_3] = inputs[inputName_2];
             inputs[inputName_2] = inputs[inputName_1];
+            inputs[inputName_1] = input;
+            lastCapturedTime = videoCapture.getTimeElapsed();
+        } else
+        {
             inputs[inputName_1] = input;
         }
 
@@ -351,9 +383,6 @@ public class VNectBarracudaRunner : MonoBehaviour
             cachedJointPoints[cacheCursor][0].timeFrame < videoCapture.getTimeElapsed())
         {
             cacheCursor++;
-            Debug.Log(cacheCursor);
-            Debug.Log(cachedJointPoints[cacheCursor][0].timeFrame);
-            Debug.Log(videoCapture.getTimeElapsed());
         }
         for (var i = 0; i < jointPoints.Length; i++)
         {
