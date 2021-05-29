@@ -33,7 +33,7 @@ public enum PositionIndex : int
     lThighBend,
     lShin,
     lFoot,
-    lToe,d
+    lToe,
 
     abdomenUpper,
 
